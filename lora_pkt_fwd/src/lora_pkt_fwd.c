@@ -46,6 +46,9 @@ Maintainer: Michael Coracin
 #include <netdb.h>          /* gai_strerror */
 
 #include <pthread.h>
+#include <mosquitto.h>
+#include <errno.h>
+
 
 #include "trace.h"
 #include "jitqueue.h"
@@ -71,6 +74,8 @@ Maintainer: Michael Coracin
   #define VERSION_STRING "undefined"
 #endif
 
+#define MQTT_TOPIC "test"
+#define MQTT_HOSTNAME "192.168.43.247"
 #define DEFAULT_SERVER      127.0.0.1   /* hostname also supported */
 #define DEFAULT_PORT_UP     1780
 #define DEFAULT_PORT_DW     1782
@@ -144,6 +149,9 @@ static uint32_t net_mac_l; /* Least Significant Nibble, network order */
 /* network sockets */
 static int sock_up; /* socket for upstream traffic */
 static int sock_down; /* socket for downstream traffic */
+
+struct mosquitto *mosq_up = NULL;
+struct mosquitto *mosq_down = NULL;
 
 /* network protocol variables */
 static struct timeval push_timeout_half = {0, (PUSH_TIMEOUT_MS * 500)}; /* cut in half, critical for throughput */
@@ -1041,6 +1049,28 @@ int main(void)
     float up_ack_ratio;
     float dw_ack_ratio;
 
+
+    mosquitto_lib_init();
+    mosq_up=mosquitto_new(NULL,true,NULL);
+    if(!mosq_up)
+    {
+        fprintf(stderr, "Can't init Mosquitto lib\n");
+        exit(-1);
+    }
+   
+
+  // Establish a connection to the MQTT server. Do not use a keep-alive ping
+  int ret = mosquitto_connect (mosq_up, MQTT_HOSTNAME, 1883, 0);
+   if (ret)
+      { 
+               fprintf (stderr, "Can't connect to Mosquitto server\n");
+                   exit (-1);
+      }
+   
+  
+
+
+
     /* display version informations */
     MSG("*** Beacon Packet Forwarder for Lora Gateway ***\nVersion: " VERSION_STRING "\n");
     MSG("*** Lora concentrator HAL library version info ***\n%s\n***\n", lgw_version_info());
@@ -1850,6 +1880,8 @@ void thread_up(void) {
         printf("\nJSON up: %s\n", (char *)(buff_up + 12)); /* DEBUG: display JSON payload */
 
         /* send datagram to server */
+        mosquitto_publish(mosq_up,NULL,MQTT_TOPIC,buff_index,buff_up,
+                0,false);
         send(sock_up, (void *)buff_up, buff_index, 0);
         clock_gettime(CLOCK_MONOTONIC, &send_time);
         pthread_mutex_lock(&mx_meas_up);
