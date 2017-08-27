@@ -1,0 +1,10 @@
+{
+    "gateway_conf": {
+        "gateway_ID": "b827ebFFFEeddc4c",
+        "autoquit_threshold": 0,
+        //"gps_tty_path": "/dev/ttyAMA0",
+        "server_address": "47.93.240.104",
+        "serv_port_up": 1700,
+        "serv_port_down": 1700
+    }
+}
